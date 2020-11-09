@@ -8,7 +8,7 @@ public class RedisMessageListenerImpl implements RedisMessageListener {
 
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
-		System.out.println("Message received: " + message.toString());		
+		System.out.println("Message received: " + message.toString() + ", " + new String(pattern));		
 	}
 
 }

@@ -1,6 +1,7 @@
 package com.tirmizee.config;
 
 import java.time.Duration;
+import java.util.Collections;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,7 @@ public class RedisConfig {
 			RedisMessageListener redisMessageListener, JedisConnectionFactory jedisConnectionFactory) {
 	    RedisMessageListenerContainer container = new RedisMessageListenerContainer(); 
 	    container.setConnectionFactory(jedisConnectionFactory); 
-	    container.addMessageListener(redisMessageListener, topic); 
+	    container.addMessageListener(redisMessageListener, Collections.singletonList(topic)); 
 	    return container; 
 	}
 	
