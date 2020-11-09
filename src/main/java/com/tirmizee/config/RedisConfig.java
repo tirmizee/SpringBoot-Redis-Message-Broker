@@ -11,8 +11,11 @@ import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
+
+import com.tirmizee.service.RedisMessageListener;
 
 import redis.clients.jedis.JedisPool;
 
@@ -40,6 +43,15 @@ public class RedisConfig {
 	@Bean
 	public ChannelTopic topic() {
 	    return new ChannelTopic("messageQueue");
+	}
+	
+	@Bean
+	public RedisMessageListenerContainer redisMessageListenerContainer(ChannelTopic topic, 
+			RedisMessageListener redisMessageListener, JedisConnectionFactory jedisConnectionFactory) {
+	    RedisMessageListenerContainer container = new RedisMessageListenerContainer(); 
+	    container.setConnectionFactory(jedisConnectionFactory); 
+	    container.addMessageListener(redisMessageListener, topic); 
+	    return container; 
 	}
 	
 	@Bean
