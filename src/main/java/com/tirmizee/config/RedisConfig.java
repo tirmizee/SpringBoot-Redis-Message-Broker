@@ -2,6 +2,7 @@ package com.tirmizee.config;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,9 +14,13 @@ import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericToStringSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
+import com.tirmizee.model.Payment;
+import com.tirmizee.service.PaymentListener;
 import com.tirmizee.service.RedisMessageListener;
 
 import redis.clients.jedis.JedisPool;
@@ -47,11 +52,35 @@ public class RedisConfig {
 	}
 	
 	@Bean
-	public RedisMessageListenerContainer redisMessageListenerContainer(ChannelTopic topic, 
-			RedisMessageListener redisMessageListener, JedisConnectionFactory jedisConnectionFactory) {
+	public ChannelTopic topicPayment() {
+	    return new ChannelTopic("paymentQueue");
+	}
+	
+	@Bean
+	public RedisSerializer<Payment> paymentSerializer(){
+		return new Jackson2JsonRedisSerializer<>(Payment.class);
+	}
+	
+	@Bean
+    public MessageListenerAdapter messageListenerAdapter(PaymentListener paymentListener, RedisSerializer<Payment> paymentSerializer) {
+        MessageListenerAdapter messageListenerAdapter = new MessageListenerAdapter(paymentListener);
+        messageListenerAdapter.setSerializer(paymentSerializer);
+        return messageListenerAdapter;
+    }
+	
+	@Bean
+	public RedisMessageListenerContainer redisMessageListenerContainer(
+			ChannelTopic topic, 
+			ChannelTopic topicPayment, 
+			RedisMessageListener redisMessageListener, 
+			MessageListenerAdapter messageListenerAdapter,
+			JedisConnectionFactory jedisConnectionFactory ) {
+		
 	    RedisMessageListenerContainer container = new RedisMessageListenerContainer(); 
 	    container.setConnectionFactory(jedisConnectionFactory); 
+	    container.setTaskExecutor(Executors.newFixedThreadPool(4));
 	    container.addMessageListener(redisMessageListener, Collections.singletonList(topic)); 
+	    container.addMessageListener(messageListenerAdapter, topicPayment); 
 	    return container; 
 	}
 	
@@ -81,6 +110,14 @@ public class RedisConfig {
 			.usePooling()
 			.build();
 		return new JedisConnectionFactory(standaloneConfiguration, clientConfiguration);
+	}
+	
+	@Bean
+	public RedisTemplate<String, Payment> redisTemplatePayment(JedisConnectionFactory jedisConnectionFactory, RedisSerializer<Payment> paymentSerializer) {
+	    final RedisTemplate<String, Payment> template = new RedisTemplate<String, Payment>();
+	    template.setConnectionFactory(jedisConnectionFactory);
+	  	template.setValueSerializer(paymentSerializer);
+	    return template;
 	}
 	
 	@Bean
